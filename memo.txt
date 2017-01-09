@@ -1,21 +1,25 @@
+# Close to CP, ttr should be more precise
+  -> check calculation for ttr
+
 # Moving like satellite for CP
   -> thrust value might be too much for both Early-Pivot and OIO Move.
+  -> Seems fixed by fixes mentioned below
+
+# Check rotate()
+  -> rotate() is wrong. it rotates wrong direction.
+  -> need to check all usage. most of them might be modified in the condition expression
+  404, 407 in C-Move should not be modified. (it means it NOW does NOT work)
+  -> Thought FIXED. That was NOT TRUE
+  -> Pod.thrust_vector() was WRONG!!  -> Pod.next_location() was affected in Shielding Implementation
+
 
 # Check angle_for()
   -> angle_for() is right
   -> need to check all usage (ok: 229, 232, 360(*1), 411, 260, 261(*2), 403)
      *1 but 361 should be fixed when fixing rotate()
-     *2 but 263,266 should be fixed when fixing rotate()
-     ** 276, 278, 284, 286
-
-
-# Check rotate()
-  -> rotate() is wrong. it rotates wrong direction.
-  -> need to check all usage. most of them might be modified in the condition expression
-  404, 407 should not be modified. (it means it NOW does NOT work)
-
-
-
+     *2 but 263,266 should be fixed when fixing rotate() -> fixed by 258(argument of angle_for)
+     ** 276, 278, 284, 286 -> fixed 271(condition exp) for 276 & 278, 283(condition exp) for 284 & 286
+  -> Finished except for mentioned above
 
 
 # Question: Angle should get close to the target

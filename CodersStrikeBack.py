@@ -25,10 +25,9 @@ class DebugTool:
     def stderr(*args):
         print(*args, file=sys.stderr)
 
-    @staticmethod
-    def plot_vector_clock(vct, clr="b", txt=""):
-        DT.plt.plot((0, vct[0]), (0, vct[1]), color=clr)
-        DT.plt.text(vct[0], vct[1], txt)
+    def plot_vector_clock(self, vct, clr="b", txt=""):
+        self.plt.plot((0, vct[0]), (0, vct[1]), color=clr)
+        self.plt.text(vct[0], vct[1], txt)
 
 
 # Pod is instantiate EVERY TURN by using standard input
@@ -59,7 +58,7 @@ class Pod:
         return p.angle_as_vector.angle_for(point - self.location)
 
     def thrust_vector(self):
-        return self.thrust_target.as_magnitude(self.thrust)
+        return (self.thrust_target - self.location).as_magnitude(self.thrust)
 
     def next_location(self):
         return self.location + self.inertia + self.thrust_vector()
@@ -128,7 +127,7 @@ class Vector(np.ndarray):
         rot = np.matrix(((math.cos(r), math.sin(r)), (-math.sin(r), math.cos(r))))
         # print(np.dot(self, rot), file=sys.stderr)
         # print(np.array(np.dot(self, rot)).ravel(), file=sys.stderr)
-        return Vector(*np.array(np.dot(rot, self)).ravel())
+        return Vector(*np.array(np.dot(self, rot)).ravel())
 
 
 # Accept turn_history: [current[turn#, [ally Pod1, ally Pod2, enemy Pod1, enemy Pod2]], previous[...]]
@@ -256,12 +255,10 @@ while True:
                         DT.plt.xlim(-150, 150)
 
                     # Rotate target_vector to resist against inertia
-                    compo = trj[i].inertia.magnitude() * math.sin(trj[i].inertia.angle_for(target_vector))
-                    if trj[i].inertia.angle_for(target_vector) > 0:
-                        # rot = -math.asin(min(1, abs(compo / 100)))
-                        rot = -math.asin(min(1, abs(compo)))  # should be positive ?
+                    compo = trj[i].inertia.magnitude() * math.sin(target_vector.angle_for(trj[i].inertia))
+                    if target_vector.angle_for(trj[i].inertia) > 0:
+                        rot = -math.asin(min(1, abs(compo)))
                     else:
-                        # rot = math.asin(min(1, abs(compo / 100)))
                         rot = math.asin(min(1, abs(compo)))
                     target_vector = target_vector.rotate(rot)
                     if DT.debug_mode:
@@ -271,7 +268,7 @@ while True:
                     angle = trj[i].angle_as_vector.angle_for(target_vector)
                     if abs(angle) < ROTATE_PER_TURN:
                         pass
-                    elif angle < 0:
+                    elif angle > 0:
                         target_vector = trj[i].angle_as_vector.rotate(ROTATE_PER_TURN)
                     else:
                         target_vector = trj[i].angle_as_vector.rotate(-ROTATE_PER_TURN)
@@ -283,7 +280,7 @@ while True:
                     angle = trj[i].angle_as_vector.angle_for(CP[trj[i].following_cp_id()] - CP[trj[i].next_cp_id])
                     if abs(angle) < ROTATE_PER_TURN:
                         target_vector = trj[i].angle_as_vector
-                    elif angle < 0:
+                    elif angle > 0:
                         target_vector = trj[i].angle_as_vector.rotate(ROTATE_PER_TURN)
                     else:
                         target_vector = trj[i].angle_as_vector.rotate(-ROTATE_PER_TURN)
@@ -356,7 +353,7 @@ while True:
             # Before pivoting, rotate target_vector according to the end point of the simulation
             # Todo: maybe inertia needed to be considered.
             if ttr > ttp:
-                rot = (CP[p.next_cp_id] - p.location).angle_for(loc - p.location)
+                rot = (loc - p.location).angle_for(CP[p.next_cp_id] - p.location)
                 target_vector = p.thrust_vector().rotate(rot)
                 p.thrust_target = target_vector + p.location
                 p.thrust = target_vector.magnitude()
