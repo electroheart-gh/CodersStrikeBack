@@ -1,0 +1,73 @@
+# Moving like satellite for CP
+  -> thrust value might be too much for both Early-Pivot and OIO Move.
+
+# Check angle_for()
+  -> angle_for() is right
+  -> need to check all usage (ok: 229, 232, 360(*1), 411, 260, 261(*2), 403)
+     *1 but 361 should be fixed when fixing rotate()
+     *2 but 263,266 should be fixed when fixing rotate()
+     ** 276, 278, 284, 286
+
+
+# Check rotate()
+  -> rotate() is wrong. it rotates wrong direction.
+  -> need to check all usage. most of them might be modified in the condition expression
+  404, 407 should not be modified. (it means it NOW does NOT work)
+
+
+
+
+
+# Question: Angle should get close to the target
+  -> gave up use of plt.quiver (direction was wrong. No idea for the reason)
+  -> Fixed to pass abs_angle as degrees instead of radians for Pod.__init__
+  -> Fixed to use sin instead of cos to calculate excessive component
+  -> Fixed to set the result of simulation to trj[i].thrust_vector instead of trj[i+1]
+     and set the value to p.thrust_vector from trj[i].thrust_vector
+  -> FIXED
+
+
+# rotation may be wrong??? condition of if statement or rotation method?
+i=3
+target_vector=[ 97.84128862 -20.66596818]
+
+trj[i].location =[6020 6924]
+
+trj[i].inertia=[545  10]
+
+loc=[ 6662.84128862  6913.33403182]
+
+target_vector.abs_angle()=6.0750256029099265
+
+
+# Question: Inertia not matched to move
+  -> wrong use of plt.quiver
+  -> FIXED
+
+# Options for good test course
+seed = 330280693
+pod_per_player = 2
+pod_timeout = 100
+map = 3309
+7213
+14562
+7698
+10586
+5050
+13073
+2301
+4574
+2203
+7373
+4911
+
+
+# Standard Input for each turn
+x: x position of your pod
+y: y position of your pod
+vx: x speed of your pod
+vy: y speed of your pod
+angle: angle of your pod, radians between 0 and 2 * pi  <= wrong
+next_checkpoint_id: next check point id of your pod
+
+

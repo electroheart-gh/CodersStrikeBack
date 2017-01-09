@@ -3,14 +3,6 @@ import math
 import numpy as np
 
 
-# try:
-#     import matplotlib.pyplot as plt
-#
-#     DEBUG = True
-# except ImportError:
-#     DEBUG = False
-
-
 class DebugTool:
     def __init__(self):
         try:
@@ -33,16 +25,11 @@ class DebugTool:
     def stderr(*args):
         print(*args, file=sys.stderr)
 
+    @staticmethod
+    def plot_vector_clock(vct, clr="b", txt=""):
+        DT.plt.plot((0, vct[0]), (0, vct[1]), color=clr)
+        DT.plt.text(vct[0], vct[1], txt)
 
-# Auto-generated code below aims at helping you parse
-# the standard input according to the problem statement.
-
-# x: x position of your pod
-# y: y position of your pod
-# vx: x speed of your pod
-# vy: y speed of your pod
-# angle: angle of your pod, radians between 0 and 2 * pi
-# next_checkpoint_id: next check point id of your pod
 
 # Pod is instantiate EVERY TURN by using standard input
 class Pod:
@@ -58,13 +45,14 @@ class Pod:
         self.thrust_target = Vector(0, 0)
         self.thrust = 0
         self.shield = 0
-        self.angle_as_vector = Vector(math.cos(self.abs_angle), math.sin(self.abs_angle))
+        self.angle_as_vector = Vector(math.cos(self.abs_angle), math.sin(self.abs_angle)).as_magnitude(100)
 
     def following_cp_id(self):
         return (self.next_cp_id + 1) % NUMBER_OF_CP
 
     def angle_for_location(self, point):
-        """Return radians between -pi and pi"""
+        """Returns radians between -pi and pi.
+        In THIS GAME field, POSITIVE number means CLOCKWISE direction from front face of SELF to the POINT."""
         # DEBUG INFO
         # print("angle_for_location...", point, self.location, file=sys.stderr)
         # print((point - self.location).abs_angle(), self.abs_angle, file=sys.stderr)
@@ -103,6 +91,8 @@ class Vector(np.ndarray):
         return self.normalized() * scalar
 
     def abs_angle(self):
+        """Returns radians between 0 and 2 * pi for absolute angle.
+        In THIS GAME field, 0 means facing EAST while 90 means facing SOUTH."""
         # Flip because atan2() takes y then x
         angle = math.atan2(*np.flipud(self))
 
@@ -113,7 +103,8 @@ class Vector(np.ndarray):
         return angle
 
     def angle_for(self, vector):
-        """Return radians between -pi and pi"""
+        """Returns radians between -pi and pi.
+          In THIS GAME field, POSITIVE number means CLOCKWISE direction from SELF to VECTOR."""
         diff = vector.abs_angle() - self.abs_angle()
         # print("vctr", vector.abs_angle(), "self", self.abs_angle(), file=sys.stderr)
         if abs(diff) < math.pi:
@@ -124,7 +115,7 @@ class Vector(np.ndarray):
             return diff + math.pi * 2
 
     def distance_from(self, point_as_vector):
-        """Return the minimum distance from the point(vector) to the line segment(self)"""
+        """Returns the minimum distance from the point(vector) to the line segment(self)."""
         if np.dot(self, point_as_vector) < 0:
             return point_as_vector.magnitude()
         elif np.dot(-self, point_as_vector - self) < 0:
@@ -132,23 +123,6 @@ class Vector(np.ndarray):
         else:
             print(self, point_as_vector, np.cross(self, point_as_vector), self.magnitude(), file=sys.stderr)
             return abs(np.cross(self, point_as_vector) / self.magnitude())
-
-            # Options for good test course
-            # seed = 330280693
-            # pod_per_player = 2
-            # pod_timeout = 100
-            # map = 3309
-            # 7213
-            # 14562
-            # 7698
-            # 10586
-            # 5050
-            # 13073
-            # 2301
-            # 4574
-            # 2203
-            # 7373
-            # 4911
 
     def rotate(self, r):
         rot = np.matrix(((math.cos(r), math.sin(r)), (-math.sin(r), math.cos(r))))
@@ -193,15 +167,6 @@ def center_of_three_points(p1, p2, p3):
     c = ((x - y) * (w - abs(w) ** 2) / 2j / w.imag - x) * -1
     return c.real, c.imag
 
-
-# def my_input():
-#     if DEBUG:
-#         fd = open(r"C:\Users\JUNJI\Documents\Condingame\pyCharmProject\CodersStrikeBack\input.txt")
-#         data = fd.readline()
-#     else:
-#         data = input()
-#     print(data, file=sys.stderr)
-#     return data
 
 DT = DebugTool()
 
@@ -257,6 +222,7 @@ while True:
             p.thrust_target = CP[p.next_cp_id] - p.inertia
             p.thrust = float("inf")
 
+        # Depending on angle to CP, begin OUT_IN_OUT Move
         elif p.pod_id in OUT_IN_OUT and abs(p.angle_for_location(CP[p.next_cp_id])) < ROTATE_PER_TURN * 3:
             # To determine turns to begin pivot etc, roughly estimate trajectory.
             ttp = int(abs((CP[p.next_cp_id] - p.location).angle_for(
@@ -277,27 +243,43 @@ while True:
             trj = [p]  # Type: list[Pod]
             for i in range(ttr + ttp):
 
+                # At first, get close to CP
                 if i < ttr - ttp:
                     # Basically, target is next CP with thrust 100.
                     target_vector = (CP[trj[i].next_cp_id] - trj[i].location).as_magnitude(100)
+                    if DT.debug_mode:
+                        DT.plt.figure("vector clock" + str(i))
+                        DT.plot_vector_clock(target_vector, "b", "Straight to CP")
+                        DT.plot_vector_clock(trj[i].inertia, "y", "Inertia")
+                        DT.plot_vector_clock(trj[i].angle_as_vector, "black", "original angle")
+                        DT.plt.ylim(150, -150)
+                        DT.plt.xlim(-150, 150)
+
                     # Rotate target_vector to resist against inertia
-                    compo = trj[i].inertia.magnitude() * math.cos(trj[i].inertia.angle_for(target_vector))
+                    compo = trj[i].inertia.magnitude() * math.sin(trj[i].inertia.angle_for(target_vector))
                     if trj[i].inertia.angle_for(target_vector) > 0:
-                        rot = -math.asin(min(1, abs(compo / 100)))
+                        # rot = -math.asin(min(1, abs(compo / 100)))
+                        rot = -math.asin(min(1, abs(compo)))  # should be positive ?
                     else:
-                        rot = math.asin(min(1, abs(compo / 100)))
+                        # rot = math.asin(min(1, abs(compo / 100)))
+                        rot = math.asin(min(1, abs(compo)))
                     target_vector = target_vector.rotate(rot)
+                    if DT.debug_mode:
+                        DT.plot_vector_clock(target_vector, "y", "Rotate for compo" + str(rot))
 
                     # Revise target_vector considering limit of pivot angle (ROTATE_PER_TURN)
                     angle = trj[i].angle_as_vector.angle_for(target_vector)
                     if abs(angle) < ROTATE_PER_TURN:
                         pass
                     elif angle < 0:
-                        target_vector = trj[i].angle_as_vector.rotate(ROTATE_PER_TURN).as_magnitude(100)
+                        target_vector = trj[i].angle_as_vector.rotate(ROTATE_PER_TURN)
                     else:
-                        target_vector = trj[i].angle_as_vector.rotate(-ROTATE_PER_TURN).as_magnitude(100)
+                        target_vector = trj[i].angle_as_vector.rotate(-ROTATE_PER_TURN)
+                    if DT.debug_mode:
+                        DT.plot_vector_clock(target_vector, "r", "Rotate for compo & abs angle" + str(angle))
+
+                # Begin to pivot for the following CP except for the case CP is in small angle
                 else:
-                    # Begin to pivot for the following CP except for the case CP is in small angle
                     angle = trj[i].angle_as_vector.angle_for(CP[trj[i].following_cp_id()] - CP[trj[i].next_cp_id])
                     if abs(angle) < ROTATE_PER_TURN:
                         target_vector = trj[i].angle_as_vector
@@ -305,22 +287,32 @@ while True:
                         target_vector = trj[i].angle_as_vector.rotate(ROTATE_PER_TURN)
                     else:
                         target_vector = trj[i].angle_as_vector.rotate(-ROTATE_PER_TURN)
+
+                    if DT.debug_mode and p.pod_id == 1:
+                        DT.plt.figure("vector clock" + str(i))
+                        DT.plot_vector_clock(target_vector, "r", "Rotate RPT for following CP" + str(angle))
+                        DT.plot_vector_clock(trj[i].inertia, "y", "Inertia")
+                        DT.plot_vector_clock(trj[i].angle_as_vector, "black", "original angle")
+                        DT.plt.ylim(150, -150)
+                        DT.plt.xlim(-150, 150)
+
                     # Todo: Consider right thrust power instead of setting 100 always.
                     target_vector = target_vector.as_magnitude(100)
 
+                # Set result to the trj list
                 loc = trj[i].location + trj[i].inertia + target_vector
                 inr = (loc - trj[i].location) * .85
                 trj.append(
-                    Pod(trj[i].pod_id, "ally", loc[0], loc[1], inr[0], inr[1], target_vector.abs_angle(),
+                    Pod(trj[i].pod_id, "ally", loc[0], loc[1], inr[0], inr[1], math.degrees(target_vector.abs_angle()),
                         trj[i].next_cp_id))
-                trj[i + 1].thrust_target = trj[i].location + target_vector
-                trj[i + 1].thrust = target_vector.magnitude()
+                trj[i].thrust_target = trj[i].location + target_vector
+                trj[i].thrust = target_vector.magnitude()
 
                 if DT.debug_mode:
                     tx = [t.location.x() for t in trj]
                     ty = [t.location.y() for t in trj]
 
-                    DT.plt.figure(1)
+                    DT.plt.figure("map")
 
                     # trj of location by BLUE line
                     DT.plt.plot(tx, ty, lw=2, color="b")
@@ -334,17 +326,18 @@ while True:
                     DT.plt.plot(CP[p.following_cp_id()][0], CP[p.following_cp_id()][1], "ro")
 
                     # angle by RED arrow
-                    DT.plt.quiver(trj[i].location[0], trj[i].location[1], trj[i].angle_as_vector[0],
-                                  trj[i].angle_as_vector[1], width=0.001, color="r")
+                    DT.plt.plot((trj[i].location[0], trj[i].angle_as_vector[0] + trj[i].location[0]),
+                                (trj[i].location[1], trj[i].angle_as_vector[1] + trj[i].location[1]),
+                                color="black")
 
                     # inertia by YELLOW arrow
-                    DT.plt.quiver(trj[i].location[0], trj[i].location[1], trj[i].inertia[0],
-                                  trj[i].inertia[1], width=0.001, color="y")
+                    DT.plt.plot((trj[i].location[0], trj[i].inertia[0] + trj[i].location[0]),
+                                (trj[i].location[1], trj[i].inertia[1] + trj[i].location[1]),
+                                color="y")
 
-                    # target by BLACK line
-                    if i != 0:
-                        DT.plt.plot((trj[i].location[0], trj[i].thrust_target[0]),
-                                    (trj[i].location[1], trj[i].thrust_target[1]), c="black")
+                    # target by BLUE line
+                    DT.plt.plot((trj[i].location[0], trj[i].thrust_target[0]),
+                                (trj[i].location[1], trj[i].thrust_target[1]), c="b")
 
                     DT.plt.xlim(0, 16000)
                     DT.plt.ylim(9000, 0)
@@ -353,11 +346,13 @@ while True:
                     # DT.plt.plot([math.degrees(tr.abs_angle) for tr in trj], "ro")
                     # DT.plt.ylim(-180, 180)
 
+                # finish simulation when reaching enough distance to CP
                 if (loc - p.location).magnitude() > (CP[p.next_cp_id] - p.location).magnitude():
                     break
 
-            p.thrust_target = trj[1].thrust_target
-            p.thrust = trj[1].thrust
+            p.thrust_target = trj[0].thrust_target
+            p.thrust = trj[0].thrust
+
             # Before pivoting, rotate target_vector according to the end point of the simulation
             # Todo: maybe inertia needed to be considered.
             if ttr > ttp:
@@ -365,7 +360,6 @@ while True:
                 target_vector = p.thrust_vector().rotate(rot)
                 p.thrust_target = target_vector + p.location
                 p.thrust = target_vector.magnitude()
-
 
         elif p.pod_id in EARLY_PIVOT:
             # Early-Pivot Implementation
@@ -393,7 +387,7 @@ while True:
 
         elif p.pod_id in CIRCULAR_MOVE:
             # Circular-Move Implementation
-            # In short, the circle of this Implementation is TOO BIG !!
+            # In short, the circle of this implementation is TOO BIG !!
             # No chance to have enough speed for the circle-move even if no collision.
             # Speed might be improved by opt_thrust_vector and/or target edge of CP for the circle,
             # but recovering from collisions is difficult
@@ -425,20 +419,22 @@ while True:
                 p.thrust_target = p.location + target_vector - p.inertia
             # If too slow, pivot for shortcut and thrust according to the Pod angle
             else:
-                # If Pod speed is not enough, re-calculate next_target_vector
-                # next_target_vector = CP[p.next_cp_id] - p.location
+                # If Pod speed is not enough, re-calculate target_vector
+                target_vector = CP[p.next_cp_id] - p.location
                 # Revise target to the closest point from next checkpoint
-                # next_target_vector += (CP[p.following_cp_id()] - CP[p.next_cp_id]).as_magnitude(CP_RADIUS * 0.5)
-                # next_target_vector = next_target_vector.as_magnitude(opt_speed_for_circle)
-                opt_thrust_vector = target_vector - p.inertia
-                if p.angle_for_location(CP[p.next_cp_id]) < math.pi:
+                target_vector += (CP[p.following_cp_id()] - CP[p.next_cp_id]).as_magnitude(CP_RADIUS * 0.5)
+                target_vector = target_vector.as_magnitude(opt_speed_for_circle)
+                target_vector = target_vector - p.inertia
+                if abs(p.angle_for_location(CP[p.next_cp_id])) < math.pi / 2:
                     p.thrust = max(0,
                                    min(100,
-                                       opt_thrust_vector.magnitude() / math.cos(
+                                       target_vector.magnitude() / math.cos(
                                            p.angle_for_location(CP[p.next_cp_id]))))
-                p.thrust_target = p.location + opt_thrust_vector - p.inertia
+                else:
+                    p.thrust = 0
+                p.thrust_target = p.location + target_vector - p.inertia
 
-        # Shield Implementation
+        # Shielding Implementation
         for e in all_pods[2:4]:  # Enemy Pods
             # print(p.next_location(), e.next_location(), (p.next_location() - e.next_location()).magnitude(),
             #       file=sys.stderr)
