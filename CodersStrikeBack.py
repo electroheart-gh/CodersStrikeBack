@@ -61,7 +61,12 @@ class Pod:
         return (self.thrust_target - self.location).as_magnitude(self.thrust)
 
     def next_location(self):
+        # TODO: Change for the thrust_vector pointing more than 18 degrees
         return self.location + self.inertia + self.thrust_vector()
+
+    # def plan_oio_move(self, cp):
+    #     p = Pod()
+    #     return p
 
 
 class Vector(np.ndarray):
@@ -183,9 +188,9 @@ for i in range(NUMBER_OF_CP):
     CP.append(Vector(cp_x, cp_y))
 
 # Constant for tactics
+OUT_IN_OUT = []
 EARLY_PIVOT = [0, 1]
 CIRCULAR_MOVE = []
-OUT_IN_OUT = [0, 1]
 
 history = TurnHistory()
 
@@ -222,7 +227,7 @@ while True:
             p.thrust = float("inf")
 
         # Depending on angle to CP, begin OUT_IN_OUT Move
-        elif p.pod_id in OUT_IN_OUT and abs(p.angle_for_location(CP[p.next_cp_id])) < ROTATE_PER_TURN * 3:
+        elif p.pod_id in OUT_IN_OUT and abs(p.angle_for_location(CP[p.next_cp_id])) < ROTATE_PER_TURN * 2:
             # To determine turns to begin pivot etc, roughly estimate trajectory.
             ttp = int(abs((CP[p.next_cp_id] - p.location).angle_for(
                 CP[p.following_cp_id()] - CP[p.next_cp_id])) // ROTATE_PER_TURN)
@@ -367,9 +372,13 @@ while True:
             inertia_during_pivot = geometric_series(p.inertia, 0.85, turn_to_pivot)
             # print("idp", inertia_during_pivot, "inr", p.inertia, "ttp", turn_to_pivot,  file=sys.stderr)
             if inertia_during_pivot.distance_from(CP[p.next_cp_id] - p.location) < CP_RADIUS * 0.9:
-                # Set target for Early-Pivot.
+                # Try Fast-Early-Pivot.
                 p.thrust_target = CP[p.following_cp_id()]
-                p.thrust = 0
+                p.thrust = 100
+                next_inertia = geometric_series(p.next_location() - p.location, 0.85, turn_to_pivot - 1)
+                if next_inertia.distance_from(CP[p.next_cp_id]-p.next_location()) > CP_RADIUS*0.9:
+                    p.thrust=0
+
                 print("Early-Pivot...", turn_to_pivot, CP[p.following_cp_id()], file=sys.stderr)
             # Set target to the edge of the next checkpoint as usual.
             else:

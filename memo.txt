@@ -1,9 +1,18 @@
+# Try Pycharm type hinting smarter
+
+# Improve Early-Pivot
+
+# Suspend development for OIO
+
+
 # Close to CP, ttr should be more precise
   -> check calculation for ttr
+  -> FIXED
 
 # Moving like satellite for CP
   -> thrust value might be too much for both Early-Pivot and OIO Move.
   -> Seems fixed by fixes mentioned below
+  -> FIXED
 
 # Check rotate()
   -> rotate() is wrong. it rotates wrong direction.
@@ -11,7 +20,7 @@
   404, 407 in C-Move should not be modified. (it means it NOW does NOT work)
   -> Thought FIXED. That was NOT TRUE
   -> Pod.thrust_vector() was WRONG!!  -> Pod.next_location() was affected in Shielding Implementation
-
+  -> FIXED
 
 # Check angle_for()
   -> angle_for() is right
@@ -21,7 +30,6 @@
      ** 276, 278, 284, 286 -> fixed 271(condition exp) for 276 & 278, 283(condition exp) for 284 & 286
   -> Finished except for mentioned above
 
-
 # Question: Angle should get close to the target
   -> gave up use of plt.quiver (direction was wrong. No idea for the reason)
   -> Fixed to pass abs_angle as degrees instead of radians for Pod.__init__
@@ -29,7 +37,6 @@
   -> Fixed to set the result of simulation to trj[i].thrust_vector instead of trj[i+1]
      and set the value to p.thrust_vector from trj[i].thrust_vector
   -> FIXED
-
 
 # rotation may be wrong??? condition of if statement or rotation method?
 i=3
