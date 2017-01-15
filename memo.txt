@@ -1,9 +1,19 @@
-# Try Pycharm type hinting smarter
+### TODO ###
 
 # Improve Early-Pivot
+  next_location !!!
+
+### DONE ###
+# Changed function and variable name for readability
+
+# Try Pycharm type hinting smarter
+  Some unresolved reference warning was eliminated by setting ignoring reference
+  Upgrading Python to 3.6 does not work for unable to resolve 'List' in type hinting
+  Importing typing for 'List' is not good because it makes error in the Codingame
 
 # Suspend development for OIO
-
+# BUG FIX
+  Latent bug in angle_for_location
 
 # Close to CP, ttr should be more precise
   -> check calculation for ttr

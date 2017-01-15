@@ -32,22 +32,30 @@ class DebugTool:
 
 # Pod is instantiate EVERY TURN by using standard input
 class Pod:
+    """Pod is a racing flight object.
+    It holds properties to show the current status such as location of Pod, and also properties to bet set to steer
+    Pod in the race.
+    The following properties are ones to be set to steer Pod:
+     thrust_target
+     thrust_power
+     shield"""
+
     def __init__(self, pod_id, iff, x, y, vx, vy, angle, next_cp_id):
         self.pod_id = int(pod_id)
         self.iff = str(iff)
         self.location = Vector(int(x), int(y))
         self.inertia = Vector(int(vx), int(vy))
         self.abs_angle = math.radians(float(angle))
+        self.angle_as_vector = Vector(math.cos(self.abs_angle), math.sin(self.abs_angle)).as_magnitude(100)
         self.next_cp_id = int(next_cp_id)
 
         self.laps_to_go = LAPS_TO_GO
         self.thrust_target = Vector(0, 0)
-        self.thrust = 0
+        self.thrust_power = 0
         self.shield = 0
-        self.angle_as_vector = Vector(math.cos(self.abs_angle), math.sin(self.abs_angle)).as_magnitude(100)
 
-    def following_cp_id(self):
-        return (self.next_cp_id + 1) % NUMBER_OF_CP
+    def following_cp_id(self, i):
+        return (self.next_cp_id + i) % NUMBER_OF_CP
 
     def angle_for_location(self, point):
         """Returns radians between -pi and pi.
@@ -55,18 +63,18 @@ class Pod:
         # DEBUG INFO
         # print("angle_for_location...", point, self.location, file=sys.stderr)
         # print((point - self.location).abs_angle(), self.abs_angle, file=sys.stderr)
-        return p.angle_as_vector.angle_for(point - self.location)
+        return self.angle_as_vector.angle_for(point - self.location)
 
-    def thrust_vector(self):
-        return (self.thrust_target - self.location).as_magnitude(self.thrust)
+    def thrust_as_vector(self):
+        return (self.thrust_target - self.location).as_magnitude(self.thrust_power)
 
     def next_location(self):
         # TODO: Change for the thrust_vector pointing more than 18 degrees
-        return self.location + self.inertia + self.thrust_vector()
+        return self.location + self.inertia + self.thrust_as_vector()
 
-    # def plan_oio_move(self, cp):
-    #     p = Pod()
-    #     return p
+        # def plan_oio_move(self, cp):
+        #     p = Pod()
+        #     return p
 
 
 class Vector(np.ndarray):
@@ -140,7 +148,7 @@ class Vector(np.ndarray):
 class TurnHistory:
     def __init__(self, turn=0, pods=()):
         self.current_turn = turn
-        self.state = [pods]  # type: list[list[Pod]]
+        self.state = [pods]  # type: List[List[Pod]]
 
     def turn_end(self, pods):
         self.state.append(pods)
@@ -181,7 +189,7 @@ POD_RADIUS = 400
 LAPS_TO_GO = int(DT.input())
 NUMBER_OF_CP = int(DT.input())
 
-CP = []  # type: list[Vector]
+CP = []  # type: List[Vector]
 for i in range(NUMBER_OF_CP):
     cp_x, cp_y = [int(j) for j in DT.input().split()]
     # print(checkpoint_x, checkpoint_y, file=sys.stderr)
@@ -196,7 +204,7 @@ history = TurnHistory()
 
 # Game loop
 while True:
-    all_pods = []  # type: list[Pod]
+    all_pods = []  # type: List[Pod]
     for i in range(2):
         all_pods.append(Pod(i, "ally", *DT.input().split()))
         if history.current_turn > 1:
@@ -219,18 +227,18 @@ while True:
         # BOOST at the first turn
         if history.current_turn == 0 and not DT.debug_mode:
             p.thrust_target = CP[p.next_cp_id]
-            p.thrust = float("inf")
+            p.thrust_power = float("inf")
 
         # Go straight for the final checkpoint
         elif p.laps_to_go == 1 and p.next_cp_id == 0:
             p.thrust_target = CP[p.next_cp_id] - p.inertia
-            p.thrust = float("inf")
+            p.thrust_power = float("inf")
 
         # Depending on angle to CP, begin OUT_IN_OUT Move
         elif p.pod_id in OUT_IN_OUT and abs(p.angle_for_location(CP[p.next_cp_id])) < ROTATE_PER_TURN * 2:
             # To determine turns to begin pivot etc, roughly estimate trajectory.
             ttp = int(abs((CP[p.next_cp_id] - p.location).angle_for(
-                CP[p.following_cp_id()] - CP[p.next_cp_id])) // ROTATE_PER_TURN)
+                CP[p.following_cp_id(1)] - CP[p.next_cp_id])) // ROTATE_PER_TURN)
             dst = (CP[p.next_cp_id] - p.location).magnitude()
             inr = p.inertia.magnitude() * math.cos(p.inertia.angle_for(CP[p.next_cp_id] - p.location))
 
@@ -282,7 +290,7 @@ while True:
 
                 # Begin to pivot for the following CP except for the case CP is in small angle
                 else:
-                    angle = trj[i].angle_as_vector.angle_for(CP[trj[i].following_cp_id()] - CP[trj[i].next_cp_id])
+                    angle = trj[i].angle_as_vector.angle_for(CP[trj[i].following_cp_id(1)] - CP[trj[i].next_cp_id])
                     if abs(angle) < ROTATE_PER_TURN:
                         target_vector = trj[i].angle_as_vector
                     elif angle > 0:
@@ -308,7 +316,7 @@ while True:
                     Pod(trj[i].pod_id, "ally", loc[0], loc[1], inr[0], inr[1], math.degrees(target_vector.abs_angle()),
                         trj[i].next_cp_id))
                 trj[i].thrust_target = trj[i].location + target_vector
-                trj[i].thrust = target_vector.magnitude()
+                trj[i].thrust_power = target_vector.magnitude()
 
                 if DT.debug_mode:
                     tx = [t.location.x() for t in trj]
@@ -325,7 +333,7 @@ while True:
 
                     # CP by RED circle
                     DT.plt.plot(CP[p.next_cp_id][0], CP[p.next_cp_id][1], "ro")
-                    DT.plt.plot(CP[p.following_cp_id()][0], CP[p.following_cp_id()][1], "ro")
+                    DT.plt.plot(CP[p.following_cp_id(1)][0], CP[p.following_cp_id(1)][1], "ro")
 
                     # angle by RED arrow
                     DT.plt.plot((trj[i].location[0], trj[i].angle_as_vector[0] + trj[i].location[0]),
@@ -353,43 +361,43 @@ while True:
                     break
 
             p.thrust_target = trj[0].thrust_target
-            p.thrust = trj[0].thrust
+            p.thrust_power = trj[0].thrust_power
 
             # Before pivoting, rotate target_vector according to the end point of the simulation
             # Todo: maybe inertia needed to be considered.
             if ttr > ttp:
                 rot = (loc - p.location).angle_for(CP[p.next_cp_id] - p.location)
-                target_vector = p.thrust_vector().rotate(rot)
+                target_vector = p.thrust_as_vector().rotate(rot)
                 p.thrust_target = target_vector + p.location
-                p.thrust = target_vector.magnitude()
+                p.thrust_power = target_vector.magnitude()
 
         elif p.pod_id in EARLY_PIVOT:
             # Early-Pivot Implementation
             # If location_without_thrust is in next_checkpoint within turn_to_pivot, begin early-pivot for the
             # following checkpoint after the next.
-            angle_to_pivot = abs(p.angle_for_location(CP[p.following_cp_id()]))
+            angle_to_pivot = abs(p.angle_for_location(CP[p.following_cp_id(1)]))
             turn_to_pivot = int(angle_to_pivot // ROTATE_PER_TURN)
             inertia_during_pivot = geometric_series(p.inertia, 0.85, turn_to_pivot)
             # print("idp", inertia_during_pivot, "inr", p.inertia, "ttp", turn_to_pivot,  file=sys.stderr)
             if inertia_during_pivot.distance_from(CP[p.next_cp_id] - p.location) < CP_RADIUS * 0.9:
                 # Try Fast-Early-Pivot.
-                p.thrust_target = CP[p.following_cp_id()]
-                p.thrust = 100
+                p.thrust_target = CP[p.following_cp_id(1)]
+                p.thrust_power = 100
                 next_inertia = geometric_series(p.next_location() - p.location, 0.85, turn_to_pivot - 1)
-                if next_inertia.distance_from(CP[p.next_cp_id]-p.next_location()) > CP_RADIUS*0.9:
-                    p.thrust=0
+                if next_inertia.distance_from(CP[p.next_cp_id] - p.next_location()) > CP_RADIUS * 0.9:
+                    p.thrust_power = 0
 
-                print("Early-Pivot...", turn_to_pivot, CP[p.following_cp_id()], file=sys.stderr)
+                print("Early-Pivot...", turn_to_pivot, CP[p.following_cp_id(1)], file=sys.stderr)
             # Set target to the edge of the next checkpoint as usual.
             else:
                 target_vector = CP[p.next_cp_id] - p.location
                 # Revise target to the closest point from next checkpoint
-                target_vector += (CP[p.following_cp_id()] - CP[p.next_cp_id]).as_magnitude(CP_RADIUS * 0.5)
+                target_vector += (CP[p.following_cp_id(1)] - CP[p.next_cp_id]).as_magnitude(CP_RADIUS * 0.5)
                 opt_thrust_vector = target_vector - p.inertia
                 p.thrust_target = p.location + opt_thrust_vector
                 angle_to_pivot = abs(opt_thrust_vector.angle_for(p.angle_as_vector))
-                p.thrust = min(100, max(0, opt_thrust_vector.magnitude() * math.cos(angle_to_pivot)
-                                        / (1 + angle_to_pivot // ROTATE_PER_TURN)))
+                p.thrust_power = min(100, max(0, opt_thrust_vector.magnitude() * math.cos(angle_to_pivot)
+                                              / (1 + angle_to_pivot // ROTATE_PER_TURN)))
 
         elif p.pod_id in CIRCULAR_MOVE:
             # Circular-Move Implementation
@@ -399,7 +407,7 @@ while True:
             # but recovering from collisions is difficult
 
             # Move along with the circle passing through the next 2 CP.
-            center_of_circle = Vector(*center_of_three_points(p.location, CP[p.next_cp_id], CP[p.following_cp_id()]))
+            center_of_circle = Vector(*center_of_three_points(p.location, CP[p.next_cp_id], CP[p.following_cp_id(1)]))
             radius_of_circle = (p.location - center_of_circle).magnitude()
             opt_speed_for_circle = math.pi * radius_of_circle / 10
 
@@ -418,7 +426,7 @@ while True:
 
             # If good angle and speed, thrust to keep speed.
             if abs(p.angle_as_vector.angle_for(target_vector)) < math.pi / 5 and 0 <= speed_diff <= 100:
-                p.thrust = speed_diff
+                p.thrust_power = speed_diff
                 p.thrust_target = p.location + target_vector - p.inertia
             # If too fast, no thrust regardless of angle.
             if speed_diff < 100:
@@ -428,16 +436,16 @@ while True:
                 # If Pod speed is not enough, re-calculate target_vector
                 target_vector = CP[p.next_cp_id] - p.location
                 # Revise target to the closest point from next checkpoint
-                target_vector += (CP[p.following_cp_id()] - CP[p.next_cp_id]).as_magnitude(CP_RADIUS * 0.5)
+                target_vector += (CP[p.following_cp_id(1)] - CP[p.next_cp_id]).as_magnitude(CP_RADIUS * 0.5)
                 target_vector = target_vector.as_magnitude(opt_speed_for_circle)
                 target_vector = target_vector - p.inertia
                 if abs(p.angle_for_location(CP[p.next_cp_id])) < math.pi / 2:
-                    p.thrust = max(0,
-                                   min(100,
-                                       target_vector.magnitude() / math.cos(
-                                           p.angle_for_location(CP[p.next_cp_id]))))
+                    p.thrust_power = max(0,
+                                         min(100,
+                                             target_vector.magnitude() / math.cos(
+                                                 p.angle_for_location(CP[p.next_cp_id]))))
                 else:
-                    p.thrust = 0
+                    p.thrust_power = 0
                 p.thrust_target = p.location + target_vector - p.inertia
 
         # Shielding Implementation
@@ -449,12 +457,12 @@ while True:
                 p.shield = 1
 
         # You have to output the target position followed by the power (0 <= thrust <= 100) or "BOOST" or "SHIELD"
-        if p.thrust == float("inf"):
+        if p.thrust_power == float("inf"):
             print("{0} {1} {2}".format(int(p.thrust_target.x()), int(p.thrust_target.y()), "BOOST"))
         elif p.shield == 1:
             print("{0} {1} {2}".format(int(p.thrust_target.x()), int(p.thrust_target.y()), "SHIELD"))
         else:
-            print("{0} {1} {2}".format(int(p.thrust_target.x()), int(p.thrust_target.y()), int(p.thrust)))
+            print("{0} {1} {2}".format(int(p.thrust_target.x()), int(p.thrust_target.y()), int(p.thrust_power)))
 
     history.turn_end(all_pods)
 
