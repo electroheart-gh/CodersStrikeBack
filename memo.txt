@@ -1,9 +1,35 @@
 ### TODO ###
 
+# Improve SHIELD
+
 # Improve Early-Pivot
-  next_location !!!
 
 ### DONE ###
+# Improve DebugTool
+  Implement timer
+  Implement plot_pod_trajectory
+
+# Create series of methods for Pod move simulation
+
+  Returns sequential moves according to the specified instruction by list[Pod]
+  NOTE: The first element represent current Pod with setting values to thrust_target and thrust_power
+  NOTE: Ignores self.thrust_target and self.thrust_power
+  NOTE: Does not update next_cp_id
+
+  plan_moves(checkpoint) -> moves to the CP considering CP_RADIUS
+  plan_moves(list[thrust_vector]) -> moves according to the specified thrust_vectors in the list
+  plan_*_moves()
+
+  Returns Pod as of next turn by arguments thrust_target and thrust_power
+  next_move()
+
+  And copy()
+
+# Improve thrust_as_vector() to hold direction regardless of magnitude
+
+# Improve Early-Pivot
+  next_location -> fixed
+
 # Changed function and variable name for readability
 
 # Try Pycharm type hinting smarter
