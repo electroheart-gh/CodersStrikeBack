@@ -642,8 +642,10 @@ while True:
 
         # Shielding Implementation
         for e in all_pods[2:4]:  # Enemy Pods
-            if (p.next_location() - e.next_location()).magnitude() < POD_RADIUS * 2:
-                p.shield = 1
+            positional_vector = e.next_location() - p.next_location()  # type: Vector
+            if positional_vector.magnitude() < POD_RADIUS * 2:
+                if abs(positional_vector.angle_for(p.pod_angle_as_vector)) < math.pi:
+                    p.shield = 1
 
         # You have to output the target position followed by the power (0 <= thrust <= 100) or "BOOST" or "SHIELD"
         if p.thrust_power == float("inf"):
