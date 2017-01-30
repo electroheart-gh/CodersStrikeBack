@@ -1,4 +1,18 @@
 3
+5
+7504 1346
+12678 7089
+4064 4640
+13067 1898
+6540 7845
+6043 2954 195 -396 327 0
+9823 7077 -491 163 167 4
+7950 1761 303 -7 55 1
+9588 2847 307 252 58 1
+
+----
+Timeout pattern
+3
 6
 13891 1232
 10227 4917
@@ -59,13 +73,13 @@ for normal test
 7457 8334 100 138 315 1
 
 
-OPTION:
+OPTIONS:
 seed=628326953
 pod_per_player=2
 pod_timeout=100
 map=3450 7237 9412 7224 5968 4229 14661 1389
 
-ABEND PATTERN:
+Timeout Pattern:
 seed=269533130
 pod_per_player=2
 pod_timeout=100

@@ -14,6 +14,8 @@ class DebugTool:
         else:
             import matplotlib.pyplot as plt
             self.plt = plt
+            self.fg = None
+            self.ax = None
             self.debug_mode = True
 
     def input(self):
@@ -38,38 +40,45 @@ class DebugTool:
         print(*args, "@" + str(cf.f_back.f_lineno), file=sys.stderr, flush=True)
 
     def plot_vector_clock(self, vct, clr="b", txt=""):
+        # todo: refactor in OO style
         self.plt.plot((0, vct[0]), (0, vct[1]), color=clr)
         self.plt.text(vct[0], vct[1], txt)
 
-    def plot_pod_trajectory(self, name, trj):
+    def plot_pod_trail(self, name, trl, append=None):
         """Displays a figure showing trajectory of Pod.
         To display it, you may need to set break point at plt.figure()."""
 
-        tx = [t.location.x() for t in trj]
-        ty = [t.location.y() for t in trj]
+        tx = [t.location.x() for t in trl]
+        ty = [t.location.y() for t in trl]
 
-        self.plt.figure(name)
-        self.plt.xlim(0, 16000)
-        self.plt.ylim(9000, 0)
+        if not self.fg or not append:
+            self.fg = self.plt.figure(name)
+            self.ax = self.fg.add_subplot(111)
 
-        # trj of location by BLUE line
-        self.plt.plot(tx, ty, linewidth=2, color="b")
+        self.ax.set_xlim(0, 16000)
+        self.ax.set_ylim(9000, 0)
+        self.ax.grid()
+
+        # trl of location by BLUE line
+        self.ax.plot(tx, ty, linewidth=2, color="b")
 
         # start point by Blue circle
-        self.plt.plot(tx[0], ty[0], "bo")
+        self.ax.plot(tx[0], ty[0], "bo")
 
         # CP by RED circle
-        self.plt.plot(CP[p.next_cp_id][0], CP[p.next_cp_id][1], "ro")
-        self.plt.plot(CP[p.following_cp_id(1)][0], CP[p.following_cp_id(1)][1], "ro")
+        c1 = self.plt.Circle((CP[p.next_cp_id][0], CP[p.next_cp_id][1]), CP_RADIUS, color="r", alpha=.2)
+        c2 = self.plt.Circle((CP[p.following_cp_id(1)][0], CP[p.following_cp_id(1)][1]), CP_RADIUS, color="r", alpha=.2)
+        self.ax.add_patch(c1)
+        self.ax.add_patch(c2)
 
-        for t in trj:
+        for t in trl:
             # angle by BLACK arrow
-            self.plt.plot((t.location[0], t.pod_angle_as_vector[0] + t.location[0]),
-                          (t.location[1], t.pod_angle_as_vector[1] + t.location[1]), color="black")
+            self.ax.plot((t.location[0], t.pod_angle_as_vector[0] + t.location[0]),
+                         (t.location[1], t.pod_angle_as_vector[1] + t.location[1]), color="black")
 
             # inertia by YELLOW arrow
-            self.plt.plot((t.location[0], t.inertia[0] + t.location[0]), (t.location[1], t.inertia[1] + t.location[1]),
-                          color="y")
+            self.ax.plot((t.location[0], t.inertia[0] + t.location[0]), (t.location[1], t.inertia[1] + t.location[1]),
+                         color="y")
 
             # target by BLUE line
             # if not t.thrust_power:
@@ -119,7 +128,9 @@ class Pod:
         return self.inertia.as_magnitude(-1 / FRICTION).distance_from(checkpoint - self.location) < CP_RADIUS
 
     def thrust_as_vector(self):
-        """If thrust_power is 0, approximates it with 0.1 in order to hold its angle."""
+        """If thrust_power is 0, approximates it with 0.1 in order to hold its angle.
+        NOTE: Direction of the actual thrust is restricted by the Pod angle and ROTATE_PER_TURN."""
+        # ToDo: this method should return actual thrust considering restriction of ROTATE_PER_TURN.
         if self.thrust_power == 0:
             return (self.thrust_target - self.location).as_magnitude(MIN_THRUST)
         else:
@@ -141,8 +152,10 @@ class Pod:
             actual_thrust_vector = self.thrust_as_vector()
         elif angle > 0:
             actual_thrust_vector = self.pod_angle_as_vector.rotate(ROTATE_PER_TURN)
+            actual_thrust_vector = actual_thrust_vector.as_magnitude(max(MIN_THRUST, self.thrust_power))
         else:
             actual_thrust_vector = self.pod_angle_as_vector.rotate(-ROTATE_PER_TURN)
+            actual_thrust_vector = actual_thrust_vector.as_magnitude(max(MIN_THRUST, self.thrust_power))
         loc = self.location + self.inertia + actual_thrust_vector
         inr = loc - self.location
         inr = inr.as_magnitude(inr.magnitude() * .85)
@@ -171,7 +184,7 @@ class Pod:
             last_pod.thrust_power = MAX_THRUST
             trj.append(last_pod.next_move())
             if DT.debug_mode:
-                DT.plot_pod_trajectory("rush move", trj)
+                DT.plot_pod_trail("rush move", trj)  # , append=True)
 
     def plan_operated_moves(self, thrust_operations, checkpoint=None):
         """Returns a list of Pods that represents a trajectory of moves according to the thrust_operations.
@@ -192,6 +205,8 @@ class Pod:
             last_pod.thrust_target = ope[0]
             last_pod.thrust_power = ope[1]
             trj.append(last_pod.next_move())
+        if DT.debug_mode:
+            DT.plot_pod_trail("operated move", trj)
         return trj
 
     def plan_ep_move(self):
@@ -233,9 +248,7 @@ class Pod:
             operation_a = [[CP[self.following_cp_id(1)], MAX_THRUST]]
             operation_b = [[CP[self.following_cp_id(1)], MIN_THRUST]]
             for i in range(ttr + 1):
-
                 DT.elapsed_time()
-
                 operations = operation_a * (ttr - i) + operation_b * i
                 trj = self.plan_operated_moves(operations, CP[self.next_cp_id])
                 if trj[-1].reached(CP[self.next_cp_id]):
@@ -437,6 +450,7 @@ while True:
                     # Basically, target is next CP with thrust MAX_THRUST.
                     target_vector = (CP[trj[i].next_cp_id] - trj[i].location).as_magnitude(MAX_THRUST)
                     if DT.debug_mode:
+                        # todo: refactor plot statements in OO style and remove the use of plt
                         DT.plt.figure("vector clock" + str(i))
                         DT.plot_vector_clock(target_vector, "b", "Straight to CP")
                         DT.plot_vector_clock(trj[i].inertia, "y", "Inertia")
@@ -550,7 +564,7 @@ while True:
             # Todo: maybe inertia needed to be considered.
             if ttr > ttp:
                 rot = (loc - p.location).angle_for(CP[p.next_cp_id] - p.location)
-                target_vector = p.thrust_as_vector().rotate(rot)
+                target_vector = (p.thrust_target - p.location).as_magnitude(p.thrust_power).rotate(rot)
                 p.thrust_target = target_vector + p.location
                 p.thrust_power = target_vector.magnitude()
 

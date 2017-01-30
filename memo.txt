@@ -1,10 +1,15 @@
 ### TODO ###
 
-# Improve SHIELD
+# Improve methods for matplotlib in Debug Tool
 
-# Improve Early-Pivot
+# Improve Fast-Early-Pivot
+  Evaluate the thrust actions by calculating virtual distance for the next 2 CP considering location,
+   inertia, and angle.
 
 ### DONE ###
+# Improve SHIELD
+  Do not use SHIELD if it bumps from sides or behind.
+
 # Improve DebugTool
   Implement timer
   Implement plot_pod_trajectory
