@@ -659,7 +659,8 @@ while True:
             positional_vector = e.next_location() - p.next_location()  # type: Vector
             if positional_vector.magnitude() < POD_RADIUS * 2:
                 if abs(positional_vector.angle_for(p.pod_angle_as_vector)) < math.pi:
-                    p.shield = 1
+                    if abs(p.pod_angle_as_vector.angle_for(e.pod_angle_as_vector)) > math.pi / 2:
+                        p.shield = 1
 
         # You have to output the target position followed by the power (0 <= thrust <= 100) or "BOOST" or "SHIELD"
         if p.thrust_power == float("inf"):

@@ -1,6 +1,6 @@
 ### TODO ###
 
-# Improve methods for matplotlib in Debug Tool
+# Improve methods for matplotlib in Debug Tool to use OO style
 
 # Improve Fast-Early-Pivot
   Evaluate the thrust actions by calculating virtual distance for the next 2 CP considering location,
