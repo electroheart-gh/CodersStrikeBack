@@ -180,8 +180,12 @@ class Pod:
             last_pod = trj[-1]  # type: Pod
             if last_pod.reached(checkpoint) or (limit_turns and len(trj) > limit_turns):
                 return trj
-            last_pod.thrust_target = checkpoint - last_pod.inertia
-            last_pod.thrust_power = MAX_THRUST
+            last_pod.thrust_target = checkpoint - geometric_series(last_pod.inertia, FRICTION, 5)
+            if (last_pod.thrust_target - checkpoint).magnitude() < (last_pod.location - checkpoint).magnitude():
+                last_pod.thrust_power = MAX_THRUST
+            else:
+                last_pod.thrust_power = MIN_THRUST
+
             trj.append(last_pod.next_move())
             if DT.debug_mode:
                 DT.plot_pod_trail("rush move", trj)  # , append=True)
@@ -238,6 +242,7 @@ class Pod:
         1. Calculate min thrust to reach CP and the location and the inertia with the min thrust.
         2. Calculate the location and the inertia with max thrust.
         3. Choose 1 or 2 by distance from the following target to the location with inertia.
+        4. Adjust target by the inertia, which is ignored in the simulation above.
         """
         # Trajectory going straightforward to the next checkpoint
         rush_trj = self.plan_rush_moves(CP[self.next_cp_id])  # type: List[Pod]
@@ -347,8 +352,8 @@ class TurnHistory:
 
 def geometric_series(a, r, n):
     # sigma{ar**n}
-    if n:
-        return sum([a * r ** i for i in range(n)])
+    if r != 1:
+        return a * (1 - r ** n) / (1 - r)
     else:
         return a * n
 
