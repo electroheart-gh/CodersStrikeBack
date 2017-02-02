@@ -1,5 +1,4 @@
 ### TODO ###
-
 # Improve methods for matplotlib in Debug Tool to use OO style
 
 # Improve Fast-Early-Pivot
@@ -7,6 +6,12 @@
    inertia, and angle.
 
 ### DONE ###
+# Investigate Fast-Early-Pivot
+  It seems to begin the pivot too late.
+  -> It is because it counts turns for only the next checkpoint.
+  -> To improve thrust control, adjust thrust target and power considering inertia not only for the next turn but also
+     for the following 5 turns. Considering more than 5 turns makes the pod too slow during the pivot.
+
 # Improve SHIELD
   Do not use SHIELD if it bumps from sides or behind.
 
